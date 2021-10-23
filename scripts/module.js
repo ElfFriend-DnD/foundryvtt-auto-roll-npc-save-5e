@@ -22,40 +22,49 @@ class AutoRollNpcSave5e {
     return game.i18n.localize(`${this.MODULE_NAME}.FAIL`);
   }
 
-  static _handleItemRoll = (item, _chatMessage, _config, _actor, { userId } = {}) => {
-    if (!game.user.isGM) {
-      return;
-    }
-
+  static _handleItemRoll = (item, _chatMessage, _config, _actor) => {
     if (!item.data.data?.save?.dc) {
       return;
     }
 
     // some items might have templates to be placed
-    const itemHasTemplateFirst = item.hasAreaTarget && game.users.get(userId).can("TEMPLATE_CREATE") && canvas.activeLayer instanceof TemplateLayer;
+    const itemHasTemplateFirst = item.hasAreaTarget && game.user.can("TEMPLATE_CREATE") && canvas.activeLayer instanceof TemplateLayer;
+
+    const callback = () => this._requestTargetSave(item, _chatMessage, _config, _actor);
 
     // run the check after measured template is placed
     if (itemHasTemplateFirst) {
-      const callback = () => this._requestTargetSave(item, _chatMessage, _config, _actor, { userId });
+      console.log('waiting for template first!')
 
       Hooks.once('createMeasuredTemplate', callback);
 
-      // escape hatch to clean our hook up if the placement is canceled
-      Hooks.once('renderSceneControls', (controls) => {
+      const cancelBack = (controls) => {
         if (controls.activeControl !== 'measure') {
           Hooks.off('createMeasuredTemplate', callback);
         }
+      }
+
+      // cleans up createMeasuredTemplate hook if the user cancels out of the measure template
+      // happens before createMeasuredTemplate sometimes
+      Hooks.once('renderSceneControls', cancelBack);
+
+      // always happens before renderSceneControls in cases where the user is actually placing a
+      // measured template
+      Hooks.once('preCreateMeasuredTemplate', () => {
+        Hooks.off('renderSceneControls', cancelBack);
       });
+
       return;
     }
 
-    this._requestTargetSave(item, _chatMessage, _config, _actor, { userId });
+    callback();
   }
 
-  static _requestTargetSave = async (item, _chatMessage, _config, _actor, { userId } = {}) => {
+  static _requestTargetSave = async (item, _chatMessage, _config, _actor) => {
+    console.log('Checking target saves!');
     // filters to only tokens without Player owners
     // this excludes summons which are reasonable to request a player to roll for?
-    const targetedTokens = [...(game.users.get(userId)?.targets?.values() ?? [])].filter(t => !!t.actor && !t.actor.hasPlayerOwner);
+    const targetedTokens = [...(game.user.targets?.values() ?? [])].filter(t => !!t.actor && !t.actor.hasPlayerOwner);
 
     if (!targetedTokens.length) {
       return;
@@ -90,7 +99,9 @@ class AutoRollNpcSave5e {
 
     const messageData = {
       whisper: ChatMessage.getWhisperRecipients('gm'),
+      blind: true,
       user: game.user.data._id,
+      flags: {[this.MODULE_NAME]: { isResultCard: true }},
       type: CONST.CHAT_MESSAGE_TYPES.OTHER,
       speaker: { alias: game.i18n.localize(`${this.MODULE_NAME}.MESSAGE_HEADER`) },
       content: html,
@@ -186,6 +197,20 @@ class AutoRollNpcSave5eChat {
       token.control({ releaseOthers: true });
     }
   }
+
+  /**
+   * Removes the messages for players which are meant to be blind.
+   */
+   static removeMessagesForPlayers = (message, html) => {
+    if (game.user.isGM) return;
+
+    if (message.getFlag(AutoRollNpcSave5e.MODULE_NAME, 'isResultCard')) {
+      html.addClass('auto-roll-npc-save-5e-remove-blind');
+    }
+  }
+
 }
 
 Hooks.on('renderChatLog', AutoRollNpcSave5eChat.registerChatListeners);
+
+Hooks.on('renderChatMessage', AutoRollNpcSave5eChat.removeMessagesForPlayers);
