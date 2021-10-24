@@ -30,4 +30,3 @@ If you're using Midi, this is already entirely possible without this module. Do 
 To power this module up even more, pair it with a module that targets tokens when a measured template is dropped, e.g. DF QOL.
 
 https://user-images.githubusercontent.com/7644614/138609036-c7e6f40c-a8a2-4589-9de3-ed6a53210233.mp4
-
