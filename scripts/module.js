@@ -134,7 +134,7 @@ class AutoRollNpcSave5e {
             <li class="card-header" data-token-id="${token.id}">
               <img class="token-image" src="${token.data.img}" title="${token.data.name}" width="36" height="36" style="transform: rotate(${token.data.rotation ?? 0}deg);">
               <h3>${token.data.name}</h3>
-              <div class="roll-display">${roll.total}</div>
+              <div class="roll-display" title="${roll.formula}">${roll.total}</div>
               <div class="status-chip ${save ? 'save' : 'fail'}">
                 <span>${statusLabel}</span>
                 ${statusIcon}
