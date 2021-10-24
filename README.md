@@ -9,14 +9,25 @@
 [![ko-fi](https://img.shields.io/badge/-buy%20me%20a%20coke-%23FF5E5B)](https://ko-fi.com/elffriend)
 [![patreon](https://img.shields.io/badge/-patreon-%23FF424D)](https://www.patreon.com/ElfFriend_DnD)
 
-Adds a chat card that is only visible for GMs that checks if an NPC who was targeted with something requiring a saving throw succeeds or fails that save.
+When an item is rolled which requires a saving throw, any token not owned by a player will try to roll the correct saving throw (prompting the GM for Advantage, Disadvantage, etc as needed).
 
-If there is no token targeted when the attack roll is rolled, no chat card is output.
+Adds a chat card that is only visible for GMs with the results of these prompts.
+
+![auto-roll-npc-save-5e-cover](https://user-images.githubusercontent.com/7644614/138609250-9a3280cb-4b5d-4ce9-8255-ebcbec187093.jpg)
+
+If there is no token targeted when the item is rolled, nothing happens.
 
 Compatible with:
+
 - Minimal Rolling Enhancements
-- Better Rolls 5e
+
+Kind of Compatible with:
+
+- Better Rolls 5e (Will prompt the GM for every target's save roll mode. Better Rolls settings will not apply to this roll.)
 
 If you're using Midi, this is already entirely possible without this module. Do not use this with that.
 
 To power this module up even more, pair it with a module that targets tokens when a measured template is dropped, e.g. DF QOL.
+
+https://user-images.githubusercontent.com/7644614/138609036-c7e6f40c-a8a2-4589-9de3-ed6a53210233.mp4
+

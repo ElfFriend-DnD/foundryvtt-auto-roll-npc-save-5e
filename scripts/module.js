@@ -1,11 +1,17 @@
 class AutoRollNpcSave5e {
   static MODULE_NAME = "auto-roll-npc-save-5e";
   static MODULE_TITLE = "Auto Roll NPC Save DnD5e";
+  static SOCKET;
 
   static init = async () => {
     console.log(`${this.MODULE_NAME} | Initializing ${this.MODULE_TITLE}`);
 
     Hooks.on('Item5e.roll', this._handleItemRoll);
+  }
+
+  static initSocket = () => {
+    this.SOCKET = socketlib.registerModule(this.MODULE_NAME);
+    this.SOCKET.register('requestTargetSave', this._requestTargetSave);
   }
 
   static _getStatusIcon = ({ save }) => {
@@ -22,7 +28,13 @@ class AutoRollNpcSave5e {
     return game.i18n.localize(`${this.MODULE_NAME}.FAIL`);
   }
 
-  static _handleItemRoll = (item, _chatMessage, _config, _actor) => {
+  /**
+   * Happens when the Item is rolled on any client machine.
+   * Checks if the item has a save DC defined.
+   * Checks if the item will make a template first.
+   * Registers and cleans up some hooks to request the GM make the save at the right moment.
+   */
+  static _handleItemRoll = (item) => {
     if (!item.data.data?.save?.dc) {
       return;
     }
@@ -30,7 +42,7 @@ class AutoRollNpcSave5e {
     // some items might have templates to be placed
     const itemHasTemplateFirst = item.hasAreaTarget && game.user.can("TEMPLATE_CREATE") && canvas.activeLayer instanceof TemplateLayer;
 
-    const callback = () => this._requestTargetSave(item, _chatMessage, _config, _actor);
+    const callback = () => this._requestGMRollSave(item);
 
     // run the check after measured template is placed
     if (itemHasTemplateFirst) {
@@ -60,8 +72,16 @@ class AutoRollNpcSave5e {
     callback();
   }
 
-  static _requestTargetSave = async (item, _chatMessage, _config, _actor) => {
-    console.log('Checking target saves!');
+  /**
+   * Happens on the client machine after it expects targeting to be done.
+   * Gets the targeted tokens and requests the GM roll a save for them via socket.
+   * @param {*} item 
+   * @param {*} _chatMessage 
+   * @param {*} _config 
+   * @param {*} _actor 
+   * @returns 
+   */
+  static _requestGMRollSave = async (item) => {
     // filters to only tokens without Player owners
     // this excludes summons which are reasonable to request a player to roll for?
     const targetedTokens = [...(game.user.targets?.values() ?? [])].filter(t => !!t.actor && !t.actor.hasPlayerOwner);
@@ -72,8 +92,36 @@ class AutoRollNpcSave5e {
 
     const abilityId = item.data.data.save.ability;
     const saveDc = item.data.data.save.dc;
+    const tokenUuids = targetedTokens.map(token => token.uuid);
 
-    const saveResults = await Promise.all(targetedTokens.map(async (token) => this._rollAbilitySave(abilityId, token, saveDc)));
+    this.SOCKET.executeAsGM(this._requestTargetSave, abilityId, saveDc, tokenUuids);
+  }
+
+  /**
+   * This executes as GM to ensure only the GM is prompted about the NPC saves
+   * @param {string} abilityId - what ability is being asked a save for
+   * @param {number} saveDc - save dc
+   * @param {Array<string>} tokenUuids - uuids for the actors being targeted
+   */
+  static _requestTargetSave = async (abilityId, saveDc, tokenUuids) => {
+    // get all token actors save results
+    const saveResults = await Promise.all(tokenUuids.map(async (tokenUuid) => {
+      const token = await fromUuid(tokenUuid);
+
+      const actor = token.actor;
+
+      const roll = await actor.rollAbilitySave(abilityId, {
+        chatMessage: false,
+      });
+
+      const save = saveDc <= roll.total;
+
+      return {
+        token,
+        roll,
+        save
+      }
+    }));
 
     const html = `
       <ul class="dnd5e chat-card check-npc-save-list">
@@ -101,43 +149,18 @@ class AutoRollNpcSave5e {
       whisper: ChatMessage.getWhisperRecipients('gm'),
       blind: true,
       user: game.user.data._id,
-      flags: {[this.MODULE_NAME]: { isResultCard: true }},
+      flags: { [this.MODULE_NAME]: { isResultCard: true } },
       type: CONST.CHAT_MESSAGE_TYPES.OTHER,
       speaker: { alias: game.i18n.localize(`${this.MODULE_NAME}.MESSAGE_HEADER`) },
       content: html,
     }
 
-    if (game.modules.get('betterrolls5e')?.active) {
-      setTimeout(() => ChatMessage.create(messageData), 100);
-    }
-
-    if (game.modules.get('dice-so-nice')?.active) {
-      Hooks.once('diceSoNiceRollComplete', () => {
-        ChatMessage.create(messageData)
-      })
-    } else {
-      ChatMessage.create(messageData)
-    }
-  }
-
-  static _rollAbilitySave = async (abilityId, token, saveDc) => {
-    const actor = token.actor;
-
-    const roll = await actor.rollAbilitySave(abilityId, {
-      chatMessage: false,
-    });
-
-    const save = saveDc <= roll.total;
-
-    return {
-      token,
-      roll,
-      save
-    }
+    ChatMessage.create(messageData);
   }
 }
 
 Hooks.on("ready", AutoRollNpcSave5e.init);
+Hooks.once("socketlib.ready", AutoRollNpcSave5e.initSocket);
 
 /**
  * Most of this class is adapted directly from Core's handling of Combatants
@@ -201,7 +224,7 @@ class AutoRollNpcSave5eChat {
   /**
    * Removes the messages for players which are meant to be blind.
    */
-   static removeMessagesForPlayers = (message, html) => {
+  static removeMessagesForPlayers = (message, html) => {
     if (game.user.isGM) return;
 
     if (message.getFlag(AutoRollNpcSave5e.MODULE_NAME, 'isResultCard')) {
