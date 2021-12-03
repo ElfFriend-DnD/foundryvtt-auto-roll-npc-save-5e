@@ -92,7 +92,7 @@ class AutoRollNpcSave5e {
 
     const abilityId = item.data.data.save.ability;
     const saveDc = item.data.data.save.dc;
-    const tokenUuids = targetedTokens.map(token => token.uuid);
+    const tokenUuids = targetedTokens.map(token => token.document.uuid);
 
     this.SOCKET.executeAsGM(this._requestTargetSave, abilityId, saveDc, tokenUuids);
   }
