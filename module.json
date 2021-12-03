@@ -2,7 +2,7 @@
   "name": "auto-roll-npc-save-5e",
   "title": "Auto Roll NPC Save DnD5e",
   "description": "A module which notifies the GM if a targeted NPC makes a requested saving throw.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Andrew Krigline",
   "authors": [
     {
@@ -40,7 +40,7 @@
   ],
   "socket": true,
   "minimumCoreVersion": "0.8.9",
-  "compatibleCoreVersion": "0.8.9",
+  "compatibleCoreVersion": "9.232",
   "url": "https://github.com/ElfFriend-DnD/foundryvtt-auto-roll-npc-save-5e",
   "bugs": "https://github.com/ElfFriend-DnD/foundryvtt-auto-roll-npc-save-5e/issues",
   "changelog": "https://github.com/ElfFriend-DnD/foundryvtt-auto-roll-npc-save-5e/releases",
