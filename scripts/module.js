@@ -35,7 +35,7 @@ class AutoRollNpcSave5e {
    * Registers and cleans up some hooks to request the GM make the save at the right moment.
    */
   static _handleItemRoll = (item) => {
-    if (!item.data.data?.save?.dc) {
+    if (!item.data.data?.save?.dc || !item.data.data?.save?.ability) {
       return;
     }
 
