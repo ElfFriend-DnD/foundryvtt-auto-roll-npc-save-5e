@@ -94,7 +94,7 @@ class AutoRollNpcSave5e {
     const saveDc = item.data.data.save.dc;
     const tokenUuids = targetedTokens.map(token => token.document.uuid);
 
-    this.SOCKET.executeAsGM(this._requestTargetSave, abilityId, saveDc, tokenUuids);
+    this.SOCKET.executeAsGM(this._requestTargetSave, abilityId, saveDc, tokenUuids, item.parent);
   }
 
   /**
@@ -102,8 +102,9 @@ class AutoRollNpcSave5e {
    * @param {string} abilityId - what ability is being asked a save for
    * @param {number} saveDc - save dc
    * @param {Array<string>} tokenUuids - uuids for the actors being targeted
+   * @param {Actor5e} actor - the actor requesting the save (for chat message creation)
    */
-  static _requestTargetSave = async (abilityId, saveDc, tokenUuids) => {
+  static _requestTargetSave = async (abilityId, saveDc, tokenUuids, actor) => {
     // get all token actors save results
     const saveResults = await Promise.all(tokenUuids.map(async (tokenUuid) => {
       const token = await fromUuid(tokenUuid);
@@ -151,7 +152,8 @@ class AutoRollNpcSave5e {
       user: game.user.data._id,
       flags: { [this.MODULE_NAME]: { isResultCard: true } },
       type: CONST.CHAT_MESSAGE_TYPES.OTHER,
-      speaker: { alias: game.i18n.localize(`${this.MODULE_NAME}.MESSAGE_HEADER`) },
+      speaker: ChatMessage.getSpeaker({actor}),
+      flavor: game.i18n.localize(`${this.MODULE_NAME}.MESSAGE_HEADER`),
       content: html,
     }
 
