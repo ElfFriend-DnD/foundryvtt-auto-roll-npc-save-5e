@@ -1,0 +1,7 @@
+{
+    "auto-roll-npc-save-5e": {
+        "MESSAGE_HEADER": "Résultat du jet de sauvegarde",
+        "SAVE": "Réussi",
+        "FAIL": "Rate"
+    }
+}
