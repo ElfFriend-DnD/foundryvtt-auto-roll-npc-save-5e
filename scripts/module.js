@@ -6,7 +6,7 @@ class AutoRollNpcSave5e {
   static init = async () => {
     console.log(`${this.MODULE_NAME} | Initializing ${this.MODULE_TITLE}`);
 
-    Hooks.on('Item5e.roll', this._handleItemRoll);
+    Hooks.on('dnd5e.useItem', this._handleUseItem);
   }
 
   static initSocket = () => {
@@ -31,45 +31,14 @@ class AutoRollNpcSave5e {
   /**
    * Happens when the Item is rolled on any client machine.
    * Checks if the item has a save DC defined.
-   * Checks if the item will make a template first.
-   * Registers and cleans up some hooks to request the GM make the save at the right moment.
+   * Requests the GM make the save.
    */
-  static _handleItemRoll = (item) => {
-    if (!item.data.data?.save?.dc || !item.data.data?.save?.ability) {
+  static _handleUseItem = (item) => {
+    if (!item.system?.save?.dc || !item.system?.save?.ability) {
       return;
     }
-
-    // some items might have templates to be placed
-    const itemHasTemplateFirst = item.hasAreaTarget && game.user.can("TEMPLATE_CREATE") && canvas.activeLayer instanceof TemplateLayer;
-
-    const callback = () => this._requestGMRollSave(item);
-
-    // run the check after measured template is placed
-    if (itemHasTemplateFirst) {
-      console.log('waiting for template first!')
-
-      Hooks.once('createMeasuredTemplate', callback);
-
-      const cancelBack = (controls) => {
-        if (controls.activeControl !== 'measure') {
-          Hooks.off('createMeasuredTemplate', callback);
-        }
-      }
-
-      // cleans up createMeasuredTemplate hook if the user cancels out of the measure template
-      // happens before createMeasuredTemplate sometimes
-      Hooks.once('renderSceneControls', cancelBack);
-
-      // always happens before renderSceneControls in cases where the user is actually placing a
-      // measured template
-      Hooks.once('preCreateMeasuredTemplate', () => {
-        Hooks.off('renderSceneControls', cancelBack);
-      });
-
-      return;
-    }
-
-    callback();
+    
+    this._requestGMRollSave(item);
   }
 
   /**
@@ -90,8 +59,8 @@ class AutoRollNpcSave5e {
       return;
     }
 
-    const abilityId = item.data.data.save.ability;
-    const saveDc = item.data.data.save.dc;
+    const abilityId = item.system.save.ability;
+    const saveDc = item.system.save.dc;
     const tokenUuids = targetedTokens.map(token => token.document.uuid);
 
     this.SOCKET.executeAsGM(this._requestTargetSave, abilityId, saveDc, tokenUuids, item.parent);
@@ -133,8 +102,8 @@ class AutoRollNpcSave5e {
 
       return `
             <li class="card-header" data-token-id="${token.id}">
-              <img class="token-image" src="${token.data.img}" title="${token.data.name}" width="36" height="36" style="transform: rotate(${token.data.rotation ?? 0}deg);">
-              <h3>${token.data.name}</h3>
+              <img class="token-image" src="${token.texture.src}" title="${token.name}" width="36" height="36" style="transform: rotate(${token.rotation ?? 0}deg);">
+              <h3>${token.name}</h3>
               <div class="roll-display" title="${roll.formula}">${roll.total}</div>
               <div class="status-chip ${save ? 'save' : 'fail'}">
                 <span>${statusLabel}</span>
@@ -149,7 +118,7 @@ class AutoRollNpcSave5e {
     const messageData = {
       whisper: ChatMessage.getWhisperRecipients('gm'),
       blind: true,
-      user: game.user.data._id,
+      user: game.user._id,
       flags: { [this.MODULE_NAME]: { isResultCard: true } },
       type: CONST.CHAT_MESSAGE_TYPES.OTHER,
       speaker: ChatMessage.getSpeaker({actor}),
@@ -222,20 +191,6 @@ class AutoRollNpcSave5eChat {
       token.control({ releaseOthers: true });
     }
   }
-
-  /**
-   * Removes the messages for players which are meant to be blind.
-   */
-  static removeMessagesForPlayers = (message, html) => {
-    if (game.user.isGM) return;
-
-    if (message.getFlag(AutoRollNpcSave5e.MODULE_NAME, 'isResultCard')) {
-      html.addClass('auto-roll-npc-save-5e-remove-blind');
-    }
-  }
-
 }
 
 Hooks.on('renderChatLog', AutoRollNpcSave5eChat.registerChatListeners);
-
-Hooks.on('renderChatMessage', AutoRollNpcSave5eChat.removeMessagesForPlayers);
