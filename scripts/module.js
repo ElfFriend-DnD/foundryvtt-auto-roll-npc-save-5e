@@ -6,7 +6,7 @@ class AutoRollNpcSave5e {
   static init = async () => {
     console.log(`${this.MODULE_NAME} | Initializing ${this.MODULE_TITLE}`);
 
-    Hooks.on('dnd5e.useItem', this._handleUseItem);
+    Hooks.on(`${game.system.id}.useItem`, this._handleUseItem);
   }
 
   static initSocket = () => {
@@ -94,7 +94,7 @@ class AutoRollNpcSave5e {
     }));
 
     const html = `
-      <ul class="dnd5e chat-card check-npc-save-list">
+      <ul class="${game.system.id} chat-card check-npc-save-list">
         ${saveResults.map(({ token, roll, save }) => {
       const statusLabel = this._getStatusLabel({ save });
 
