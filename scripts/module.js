@@ -116,8 +116,8 @@ class AutoRollNpcSave5e {
     `
 
     const messageData = {
-      whisper: ChatMessage.getWhisperRecipients('gm'),
-      blind: true,
+      //whisper: ChatMessage.getWhisperRecipients('gm'),
+      blind: false,
       user: game.user._id,
       flags: { [this.MODULE_NAME]: { isResultCard: true } },
       type: CONST.CHAT_MESSAGE_TYPES.OTHER,
